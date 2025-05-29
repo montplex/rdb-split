@@ -11,7 +11,7 @@ import (
 )
 
 var rdbFileName string
-var splitNumber int
+var targetSizeGB int
 var logLevel string
 var logger = log.StandardLogger()
 
@@ -33,13 +33,16 @@ const rdbDirName = "rdb_dir"
 
 func main() {
 	flag.StringVar(&rdbFileName, "name", "dump.rdb", "rdb file name")
-	flag.IntVar(&splitNumber, "split", 10, "split number")
+	flag.IntVar(&targetSizeGB, "target-size-gb", 4, "target size in GB")
 	flag.StringVar(&logLevel, "log", "info", "log level: info/debug/trace")
 	flag.Parse()
 
 	initLogger()
 
-	logger.Warnf("start split rdb file %s, split number %d\n", rdbFileName, splitNumber)
+	logger.Warnf("start split rdb file %s, target size (GB) %d\n", rdbFileName, targetSizeGB)
+	if targetSizeGB <= 0 {
+		logger.Fatalf("target size in GB must be > 0")
+	}
 
 	// Open source RDB file
 	srcFile, err := os.Open(rdbFileName)
@@ -54,18 +57,18 @@ func main() {
 		logger.Fatalf("stat rdb file %s error: %s\n", rdbFileName, err)
 	}
 	totalSize := stat.Size()
-	if splitNumber <= 0 {
-		logger.Fatalf("split number must be > 0")
-	}
-	targetSize := totalSize / int64(splitNumber)
-	if targetSize == 0 {
-		targetSize = totalSize // fallback: all in one file
+
+	targetSize := int64(targetSizeGB) * 1024 * 1024 * 1024
+	if targetSize >= totalSize/2 {
+		logger.Fatalf("target size (GB) must be <= half of total size %d (GB)", totalSize/1024/1024/1024)
 	}
 
-	// Dist dir
+	// Dist dir create
 	if err = os.Mkdir(rdbDirName, os.ModePerm); err != nil {
-		logger.Errorf("create dir %s error: %s\n", rdbDirName, err)
-		return
+		// ignore file exists
+		if !os.IsExist(err) {
+			logger.Fatalf("create dir %s error: %s\n", rdbDirName, err)
+		}
 	}
 
 	// Prepare to parse

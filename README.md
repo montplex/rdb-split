@@ -27,12 +27,14 @@ mv <your-rdb-file> .
 Run rdb-split.
 
 ```bash
-./rdb-split --name dump.rdb --split 10
+./rdb-split --name dump.rdb --target-size-gb 5
 ```
 
-Then it will generate 10 or more files in directory 'rdb_dir'.
+It means split dump.rdb to several files, each file size is less than 5GB as rdb encode do compress.
 
-TIPS: You can change rdb file name and split number.
+Then it will generate several files in directory 'rdb_dir'.
+
+TIPS: You can change rdb file name --name or --target-size-gb.
 
 # For engula valuesight
 
